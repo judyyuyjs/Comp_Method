@@ -1,9 +1,11 @@
 % Simplex Method
 % https://www.mathworks.com/help/optim/ug/linprog.html
 
-P = readmatrix('problem.txt')
+P = readmatrix('test.txt');
 
-A = P(1:end-1,[1,end-1])
+A = P;
+A(:,end) = [];
+A(end,:) = []
 b = P(:,end);
 b(end) = []
 f = P(end,:);
