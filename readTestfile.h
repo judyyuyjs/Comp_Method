@@ -31,7 +31,7 @@ int colCount(const char* filename){
 int readFile(const char* filename, double *A, double *b, double *c, int numRow, int numCol) {
     FILE *fptr = fopen(filename, "r");
     
-    char buff[1024];
+    char buff[5000];
     const char* tok;
     double *matrix = (double *) malloc(sizeof(double) * (numRow+1)*(numCol+1));
     int i = 0;
