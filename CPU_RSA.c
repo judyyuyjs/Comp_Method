@@ -1,104 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-// #include <bits/stdc++.h>
-// using namespace std;
-// LP problem data                        standard form
-// min z = -60x1 - 30x2 - 20x3            min Z = -60x1 - 30x2 - 20x3
-// s.t. 8x1 + 6x2 + x3 <= 48              s.t. 8x1 + 6x2 + x3 + s1 = 48
-//      4x1 + 2x2 + 1.5x3 <= 20                4x1 + 2x2 + 1.5x3 + s2 = 20
-//      2x1 + 1.5x2 + 0.5x3 <= 8               2x1 + 1.5x2 + 0.5x3 + s3 = 8
-//      x1, x2, x3 >= 0                   x1, x2, x3, s1, s2, s3 >= 0
+#include "matrixinverse.h"
 
 // data is LP problem in standard form
 // min z = cx
 // s.t. Ax = b
 //      x >= 0
-// input the data here
+
 #define num_row 3
 #define num_col 6
 #define N 3  // number of basic variable
-#define M 3  // number of non basic variable
-
-double A[num_row][num_col] = {
-    {8, 6, 1, 1, 0, 0},
-    {4, 2, 1.5, 0, 1, 0},
-    {2, 1.5, 0.5, 0, 0, 1}
-};
-double b[num_row] = {48, 20, 8};
-double c[num_col] = {-60, -30, -20, 0,0,0};
-
-
-// calculate cofactor
-void cofactor(double Ab[N][N], double cof[N][N], int s, int t, int n){
-    int i = 0, j = 0;
-
-    for (int row = 0; row < n; row++) {
-        for (int col = 0; col < n; col++){
-            if (row != s && col != t) {
-                cof[i][j++] = Ab[row][col];
-                if (j == n - 1) {
-                    j = 0;
-                    i++;
-                }
-            }
-        }
-    }
-}
-
-// calaulate determinant
-double Determinant(double Ab[N][N], int n) {
-    if (n == 1) return Ab[0][0];
-
-    double det = 0.0;
-    double cof[N][N];
-    int sign = 1;
-
-    for (int f = 0; f < n; f++) {
-        cofactor(Ab, cof, 0, f, n);
-        det += sign * Ab[0][f] * Determinant(cof, n-1);
-        sign = -sign;
-    }
-    return det;
-}
-
-
-// calculate Ab-1
-int inverse(double Ab[N][N], double Ab_inverse[N][N]){
-    double det = Determinant(Ab, N);
-    
-    if (det == 0) {
-        printf("Singular\n");
-        return -1;
-    }
-
-    double adj[N][N];
-    int sign = 1;
-    double cof[N][N];
-
-    // calculate the adjugate
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            cofactor(Ab, cof, i, j, N);
-            sign = ((i + j) % 2 == 0) ? 1 : -1;
-            adj[j][i] = sign * Determinant(cof, N-1);
-        }
-    }
-    
-    
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            Ab_inverse[i][j] = adj[i][j] / det;
-        }
-    }
-
-    return 0;
-}
+#define M 3 // number of non basic variable
 
 // Use basic index to find Ab, An
-void find_AJ(double A[num_row][num_col], int basis[], double Aj[N][N]) {
+void find_AJ(double A[num_row][num_col], int basis[], double **Aj) {
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
+            Aj[i][j] = A[i][basis[j]];
+        }
+    }
+}
+
+void find_An(double A[num_row][num_col], int basis[], double **Aj) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < M; j++) {
             Aj[i][j] = A[i][basis[j]];
         }
     }
@@ -142,22 +68,56 @@ int assign_variable(int basic_index[N], int non_basic_index[M], int entering_var
 
 
 int main(){
-    // input initial basis varible index here    
-    int basic_index[N] = {3, 4, 5};
-    int non_basic_index[M] = {0, 1, 2};
+
+    double A[num_row][num_col] = {
+    {8, 6, 1, 1, 0, 0},
+    {4, 2, 1.5, 0, 1, 0},
+    {2, 1.5, 0.5, 0, 0, 1}};
+    double b[num_row] = {48, 20, 8};
+    double c[num_col] = {-60, -30, -20, 0, 0, 0};
+    // initial basis
+    int non_basic_index[M];
+    for (int i = 0; i < M; i++) {
+        non_basic_index[i] = i;
+    }
+
+    int basic_index[N];
+    for (int i = M; i < num_col; i++) {
+        basic_index[i-M] = i;
+    }
 
     int iter_num = 0;
-    while (iter_num <= 10) {
+    while (iter_num <= 2000) {
         iter_num++;
-        double Ab[N][N];
+
+        // initialize Ab, An
+        double **Ab = (double **)malloc(N * sizeof(double *));
+        for (int i = 0; i < N; i++) {
+            Ab[i] = (double *)malloc(N * sizeof(double));
+        }
+        double **An = (double **)malloc(N * sizeof(double *));
+        for (int i = 0; i < N; i++) {
+            An[i] = (double *)malloc(M * sizeof(double));
+        }
+
+        // initialize Ab inverse
+        double **Ab_inverse = (double **)malloc(N * sizeof(double *));
+        for (int i = 0; i < N; i++) {
+            Ab_inverse[i] = (double *)malloc(N * sizeof(double));
+        }
+
         find_AJ(A, basic_index, Ab);
-
-        double An[N][M];
-        find_AJ(A, non_basic_index, An);
-
+        find_An(A, non_basic_index, An);
+        
         // calculate Ab_inverse
-        double Ab_inverse[N][N];
-        inverse(Ab, Ab_inverse);
+        if (inverseMatrix(Ab, Ab_inverse, N)) {
+            printf("%d", iter_num);
+            printf("\n");
+        } else {
+            printf("Matrix is singular.\n");
+            break;
+        }
+        
 
         // calculate p = (Ab_inverse)*cB
         double cB[N];
@@ -196,12 +156,14 @@ int main(){
         // check if find CN_bar < 0 and find entering variable
         int status = 0;
         int entering_index = 0;
+        int small = 0;
         for (int i = 0; i < M; i++) {
-            if (cN_bar[i] < 0) {
-                entering_index = i; // (use Bland's rule)
-                break;
+            if (cN_bar[i] < small) {
+                small = cN_bar[i];
+                entering_index = i;
+            } else{
+                status += 1;
             }
-            status += 1;
         }
 
         int entering_var = non_basic_index[entering_index];
@@ -216,6 +178,15 @@ int main(){
 
         // if find optimal
         if (status == M) {
+            //printf("iter_num\n");
+            //printf("%d", iter_num);
+            //printf("\n");
+
+            printf("basic variables\n");
+            for (int j = 0; j < N; j++) {
+                printf("%d%s", basic_index[j], j == N - 1 ? "" : " ");
+            }
+            printf("\n");
 
             printf("Xb\n");
             for (int j = 0; j < N; j++) {
@@ -269,8 +240,15 @@ int main(){
         
         // new basic index
         assign_variable(basic_index, non_basic_index, entering_var, leaving_var);
-    }
 
+        // clean up memory
+        for (int i = 0; i < M; i++) {
+            free(Ab[i]);
+            free(Ab_inverse[i]);
+        }
+        free(Ab);
+        free(Ab_inverse);
+    }
 
     return 0;
 }
