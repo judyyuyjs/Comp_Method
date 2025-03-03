@@ -1,7 +1,8 @@
 % Simplex Method
 % https://www.mathworks.com/help/optim/ug/linprog.html
+% https://www.mathworks.com/help/optim/ug/choosing-the-algorithm.html
 
-P = readmatrix('test.txt');
+P = readmatrix('test_10.txt');
 
 A = P;
 A(:,end) = [];
@@ -10,11 +11,13 @@ b = P(:,end);
 b(end) = []
 f = P(end,:);
 f(end) = []
+[numRows,numCols] = size(f)
 
+%options = optimoptions('linprog','Algorithm','dual-simplex-legacy')
 tic
-x = linprog(f,A,b)
+[x,fval] = linprog(f,[],[],A,b,zeros(1,numCols),[])
 toc
-% solves min f'*x such that A*x ≤ b
+% solves min f'*x such that A*x = b and x >= 0
 % options = optimoptions('linprog','Algorithm','interior-point');
 
 
